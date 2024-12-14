@@ -49,6 +49,56 @@ pub trait EscrowSc {
         new_offer_id
     }
 
+    #[endpoint(cancelOffer)]
+    fn cancel_offer(&self, offer_id: OfferId) {
+        let offer = self.get_offer_by_id(offer_id);
+        let caller = self.blockchain().get_caller();
+        require!(
+            caller == offer.creator,
+            "Only the creator of the offer can cancel it"
+        );
+        self.send().direct_esdt(
+            &caller,
+            &offer.offered_payment.token_identifier,
+            offer.offered_payment.token_nonce,
+            &offer.offered_payment.amount,
+        );
+
+        self.offers(offer_id).clear();
+    }
+
+    #[payable("*")]
+    #[endpoint(acceptOffer)]
+    fn accept_offer(&self, offer_id: OfferId) {
+        let offer = self.get_offer_by_id(offer_id);
+        let caller = self.blockchain().get_caller();
+        let payment = self.call_value().single_esdt();
+        require!(caller == offer.accepted_address, "Incorrect caller");
+        require!(payment == offer.accepted_payment, "Incorrect pament");
+
+        self.send().direct_esdt(
+            &caller,
+            &offer.offered_payment.token_identifier,
+            offer.offered_payment.token_nonce,
+            &offer.offered_payment.amount,
+        );
+
+        self.send().direct_esdt(
+            &offer.creator,
+            &offer.accepted_payment.token_identifier,
+            offer.accepted_payment.token_nonce,
+            &offer.accepted_payment.amount,
+        );
+
+        self.offers(offer_id).clear();
+    }
+
+    fn get_offer_by_id(&self, offer_id: OfferId) -> Offer<Self::Api> {
+        let offer_mapper = self.offers(offer_id);
+        require!(!offer_mapper.is_empty(), "Offer does not exist");
+        offer_mapper.get()
+    }
+
     fn get_new_offer_id(&self) -> OfferId {
         let last_offer_id_mapper = self.last_offer_id();
         let new_offer_id = last_offer_id_mapper.get() + 1;
