@@ -1,0 +1,21 @@
+[package]
+name = "escrow-sc"
+version = "0.0.0"
+authors = ["you"]
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/escrow_sc.rs"
+
+[dependencies.multiversx-sc]
+version = "0.53.2"
+
+[dev-dependencies]
+num-bigint = "0.4"
+
+[dev-dependencies.multiversx-sc-scenario]
+version = "0.53.2"
+
+[workspace]
+members = [".", "meta"]
